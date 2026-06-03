@@ -1,4 +1,4 @@
-# EcatDesktop
+# EcatDesktop- Becat
 
 This solution recreates the Paradox menu, setup, queue, and archive screens as a self-contained C# Windows Forms app targeting .NET Framework 4.0.
 
