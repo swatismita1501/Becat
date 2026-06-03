@@ -1,0 +1,2 @@
+DAPrd,RemoteRaw,LocalWork,Reference,RemoteArchive,ZipArchive,CDADir,CDATemp,CDACatalog,CallCDABat
+C:\RemoteEcat\ECAT_RAW\,C:\RemoteEcat\ECAT_RAW\,C:\ECAT_WRK\,C:\RemoteLoadtape\LOAD_REF\,C:\RemoteEcat\ECAT_ASC\,C:\RemoteEcat\ARCHIVE\,C:\CDA32\,C:\TEMP\,dbda,INDcdabld.bat
