@@ -76,7 +76,7 @@ For House-Hasson CAT jobs (`WhlCode=HHH`), the project now uses the six-file sou
 - `HHH_DE.DAT`
 - `HHH_CL.DAT`
 - `HHH_FI.DAT`
-- `HHH_VM.DAT`
+itemext.dat is also used as input file.
 
 The HHH CAT flow now has two modes:
 
@@ -130,9 +130,8 @@ The EJD path now reads the staged fixed-width `ejd_i.dat`, `ejd_ldesc.dat`, `ejd
 
 The current EJD implementation has also been tuned against the supplied known-good EJD output family so the item, vendor, department, and class stages align more directly with the observed Paradox export behavior for that source pack.
 
-## Optional vendor input
-
-Vendor master input files are now optional across wholesaler file-contract profiles. When a vendor input file is present, the CAT transformation uses it for vendor enrichment. When it is missing, validation no longer blocks the job and the export falls back to vendor rows derived from item data.
+Vendor Input for HHH
+vendor input for HHH is taken from Reference\LTVM.db and processed and generated output VEND.txt
 
 ## Windows export filename handling
 
