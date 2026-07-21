@@ -132,7 +132,7 @@ namespace EcatDesktop.Forms
             ConfigureButton(_runJobsButton, "Run Jobs", RunJobsClick);
             buttonGrid.Controls.Add(_runJobsButton, 0, 0);
             buttonGrid.Controls.Add(CreateButton("Check Jobs", CheckJobsClick), 1, 0);
-            buttonGrid.Controls.Add(CreateButton("Cleanup / Done Queue", CleanupClick), 2, 0);
+            buttonGrid.Controls.Add(CreateButton("Cleanup Archive", CleanupClick), 2, 0);
             buttonGrid.Controls.Add(CreateButton("Archive Server", ArchiveServerClick), 0, 1);
             buttonGrid.Controls.Add(CreateButton("Exit", ExitClick), 1, 1);                      
             //buttonGrid.Controls.Add(CreateButton("Resume Jobs", ResumeJobsClick), 2, 1);
