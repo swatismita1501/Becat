@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using EcatDesktop.Common;
 using EcatDesktop.Models;
@@ -17,6 +18,8 @@ namespace EcatDesktop.Forms
         private readonly TextBox _zipArchiveText = new TextBox();
         private readonly Button _editButton = new Button();
         private readonly Button _saveButton = new Button();
+        private readonly Button _archiveButton = new Button();
+        private readonly ProgressBar _archiveProgressBar = new ProgressBar();
         private bool _isEditing;
 
         public ArchiveForm(AppRuntime runtime)
@@ -124,9 +127,20 @@ namespace EcatDesktop.Forms
             panel.AutoSize = true;
             panel.FlowDirection = FlowDirection.LeftToRight;
             panel.Padding = new Padding(0, 12, 0, 0);
-            panel.Controls.Add(CreateButton("Archive Server", ArchiveClick));
+
+            ConfigureButton(_archiveButton, "Archive Server", ArchiveClick);
+
+            _archiveProgressBar.Visible = false;
+            _archiveProgressBar.Style = ProgressBarStyle.Marquee;
+            _archiveProgressBar.MarqueeAnimationSpeed = 30;
+            _archiveProgressBar.Width = 180;
+            _archiveProgressBar.Height = 22;
+            _archiveProgressBar.Margin = new Padding(12, 9, 12, 0);
+
+            panel.Controls.Add(_archiveButton);
+            panel.Controls.Add(_archiveProgressBar);
             panel.Controls.Add(CreateButton("Refresh", RefreshClick));
-            panel.Controls.Add(CreateButton("Close", CloseClick));
+            panel.Controls.Add(CreateButton("Exit", CloseClick));
             return panel;
         }
 
@@ -225,11 +239,16 @@ namespace EcatDesktop.Forms
         private static Button CreateButton(string text, EventHandler onClick)
         {
             var button = new Button();
+            ConfigureButton(button, text, onClick);
+            return button;
+        }
+
+        private static void ConfigureButton(Button button, string text, EventHandler onClick)
+        {
             button.Text = text;
             button.AutoSize = true;
             button.Padding = new Padding(12, 8, 12, 8);
             button.Click += onClick;
-            return button;
         }
 
         private void EditClick(object sender, EventArgs e)
@@ -258,16 +277,39 @@ namespace EcatDesktop.Forms
             }
         }
 
-        private void ArchiveClick(object sender, EventArgs e)
+        private async void ArchiveClick(object sender, EventArgs e)
         {
+            _archiveButton.Enabled = false;
+            _archiveProgressBar.Visible = true;
+
             try
             {
                 Log.Information("Archive run clicked.");
-                RunArchive();
+
+                var result = await Task.Run(delegate
+                {
+                    return _runtime.ArchiveService.ArchiveReadyJobs();
+                });
+
+                RefreshData();
+                MessageBox.Show(this, result.Message, result.Title, MessageBoxButtons.OK, result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+
+                if (result.Success)
+                {
+                    _archiveButton.Enabled = true;
+                }
             }
             catch (Exception oException)
             {
                 Error.Continue(oException, "Unable to run archive");
+
+                // Recommended so the user can retry after an error.
+                _archiveButton.Enabled = true;
+            }
+            finally
+            {
+                _archiveProgressBar.Visible = false;
+                _archiveButton.Enabled = true;
             }
         }
 
