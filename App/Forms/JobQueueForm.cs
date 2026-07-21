@@ -307,6 +307,7 @@ namespace EcatDesktop.Forms
             finally
             {
                 _runJobsProgressBar.Visible = false;
+                _runJobsButton.Enabled = true;
             }
         }
 
