@@ -126,21 +126,21 @@ namespace EcatDesktop.Forms
 
             ConfigureCommandButton(_newButton, "New", NewClick);
             ConfigureCommandButton(_editButton, "Edit", EditClick);
-            ConfigureCommandButton(_saveButton, "Save", SaveClick);
             ConfigureCommandButton(_deleteButton, "Delete", DeleteClick);
-            ConfigureCommandButton(_cancelButton, "Cancel", CancelClick);
+            ConfigureCommandButton(_saveButton, "Save", SaveClick);            
+            
 
             var closeButton = new Button();
-            closeButton.Text = "Close";
+            closeButton.Text = "Exit";
             closeButton.AutoSize = true;
             closeButton.Padding = new Padding(12, 8, 12, 8);
             closeButton.Click += CloseClick;
 
             panel.Controls.Add(_newButton);
-            panel.Controls.Add(_editButton);
-            panel.Controls.Add(_saveButton);
+            panel.Controls.Add(_editButton);           
             panel.Controls.Add(_deleteButton);
-            panel.Controls.Add(_cancelButton);
+            panel.Controls.Add(_saveButton);
+            // panel.Controls.Add(_cancelButton);
             panel.Controls.Add(closeButton);
             return panel;
         }

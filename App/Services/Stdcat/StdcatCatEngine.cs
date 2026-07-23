@@ -216,7 +216,7 @@ namespace EcatDesktop.Services.Stdcat
                 // and then processed by tascii(..., 50, "Whl_Description", "").
                 // tascii left-trims and caps to MaxS; it does not pull characters beyond
                 // the 32-byte LT Description field.
-                var sRawDescription = sSafeSubstring(sLine, 35, 32);
+                var sRawDescription = sSafeSubstring(sLine, 35, 33);
                 var sStatusFlag = sExtractHouseHassonStatusFlag(sRawDescription);
                 var sDescription = sNormalizeHouseHassonDescription(sParadoxTasci(sRawDescription, 50, string.Empty), sStatusFlag);
                 var sVendorCode = sSafeSubstring(sLine, 87, 5).Trim();

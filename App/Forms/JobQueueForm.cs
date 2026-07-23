@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using System.Threading.Tasks;
 using EcatDesktop.Common;
 using EcatDesktop.Models;
 
@@ -16,7 +17,8 @@ namespace EcatDesktop.Forms
         private readonly DataGridView _stepGrid = new DataGridView();
         private readonly Label _statusLabel = new Label();
         private readonly Label _lastRunLabel = new Label();
-
+        private readonly Button _runJobsButton = new Button();
+        private readonly ProgressBar _runJobsProgressBar = new ProgressBar();
         public JobQueueForm(AppRuntime runtime)
         {
             _runtime = runtime;
@@ -84,7 +86,8 @@ namespace EcatDesktop.Forms
             var statusPanel = new TableLayoutPanel();
             statusPanel.Dock = DockStyle.Fill;
             statusPanel.ColumnCount = 1;
-            statusPanel.RowCount = 2;
+            statusPanel.RowCount = 3;
+            statusPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             statusPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             statusPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
@@ -93,13 +96,21 @@ namespace EcatDesktop.Forms
             _lastRunLabel.Padding = new Padding(0, 4, 0, 4);
             _lastRunLabel.ForeColor = Color.FromArgb(35, 35, 35);
 
+            _runJobsProgressBar.Dock = DockStyle.Top;
+            _runJobsProgressBar.Visible = false;
+            _runJobsProgressBar.Style = ProgressBarStyle.Marquee;
+            _runJobsProgressBar.MarqueeAnimationSpeed = 30;
+            _runJobsProgressBar.Height = 18;
+            _runJobsProgressBar.Margin = new Padding(0, 4, 24, 6);
+
             _statusLabel.Text = "Currently Processing:";
             _statusLabel.Dock = DockStyle.Fill;
             _statusLabel.AutoSize = false;
             _statusLabel.Padding = new Padding(0, 4, 0, 0);
 
             statusPanel.Controls.Add(_lastRunLabel, 0, 0);
-            statusPanel.Controls.Add(_statusLabel, 0, 1);
+            statusPanel.Controls.Add(_runJobsProgressBar, 0, 1);
+            statusPanel.Controls.Add(_statusLabel, 0, 2);
 
             var buttonGrid = new TableLayoutPanel();
             buttonGrid.Dock = DockStyle.Fill;
@@ -111,16 +122,36 @@ namespace EcatDesktop.Forms
             buttonGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             buttonGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
-            buttonGrid.Controls.Add(CreateButton("Check Jobs", CheckJobsClick), 0, 0);
-            buttonGrid.Controls.Add(CreateButton("Run Jobs", RunJobsClick), 1, 0);
-            buttonGrid.Controls.Add(CreateButton("Stop Jobs", StopJobsClick), 2, 0);
-            buttonGrid.Controls.Add(CreateButton("Cleanup / Done Queue", CleanupClick), 0, 1);
-            buttonGrid.Controls.Add(CreateButton("Archive Server", ArchiveServerClick), 1, 1);
-            buttonGrid.Controls.Add(CreateButton("Resume Jobs", ResumeJobsClick), 2, 1);
+            //buttonGrid.Controls.Add(CreateButton("Check Jobs", CheckJobsClick), 0, 0);
+            //buttonGrid.Controls.Add(CreateButton("Run Jobs", RunJobsClick), 1, 0);
+            //buttonGrid.Controls.Add(CreateButton("Stop Jobs", StopJobsClick), 2, 0);
+            //buttonGrid.Controls.Add(CreateButton("Cleanup / Done Queue", CleanupClick), 0, 1);
+            //buttonGrid.Controls.Add(CreateButton("Archive Server", ArchiveServerClick), 1, 1);
+            //buttonGrid.Controls.Add(CreateButton("Resume Jobs", ResumeJobsClick), 2, 1);
+
+            ConfigureButton(_runJobsButton, "Run Jobs", RunJobsClick);
+            buttonGrid.Controls.Add(_runJobsButton, 0, 0);
+            buttonGrid.Controls.Add(CreateButton("Check Jobs", CheckJobsClick), 1, 0);
+            buttonGrid.Controls.Add(CreateButton("Cleanup Archive", CleanupClick), 2, 0);
+            buttonGrid.Controls.Add(CreateButton("Archive Server", ArchiveServerClick), 0, 1);
+            buttonGrid.Controls.Add(CreateButton("Exit", ExitClick), 1, 1);                      
+            //buttonGrid.Controls.Add(CreateButton("Resume Jobs", ResumeJobsClick), 2, 1);
 
             footer.Controls.Add(statusPanel, 0, 0);
             footer.Controls.Add(buttonGrid, 1, 0);
             return footer;
+        }
+
+        private void ExitClick(object sender, EventArgs e)
+        {
+            try
+            {
+                Close();
+            }
+            catch (Exception oException)
+            {
+                Error.Continue(oException, "Unable to close Job Queue form");
+            }
         }
 
         private void ConfigureQueueGrid()
@@ -224,7 +255,13 @@ namespace EcatDesktop.Forms
             button.Click += onClick;
             return button;
         }
-
+        private static void ConfigureButton(Button button, string text, EventHandler onClick)
+        {
+            button.Text = text;
+            button.Dock = DockStyle.Fill;
+            button.Margin = new Padding(8, 4, 8, 4);
+            button.Click += onClick;
+        }
         private void QueueSelectionChanged(object sender, EventArgs e)
         {
             try
@@ -237,18 +274,40 @@ namespace EcatDesktop.Forms
             }
         }
 
-        private void RunJobsClick(object sender, EventArgs e)
+        private async void RunJobsClick(object sender, EventArgs e)
         {
+            _runJobsButton.Enabled = false;
+            _runJobsProgressBar.Visible = true;
+            _statusLabel.Text = "Currently Processing: Run Jobs is running...";
+
             try
             {
                 Log.Information("Run Jobs clicked.");
-                var result = _runtime.JobProcessingService.RunJobs(false);
+
+                var result = await Task.Run(delegate
+                {
+                    return _runtime.JobProcessingService.RunJobs(false);
+                });
+
                 RefreshData();
                 ShowResult(result);
+
+                if (result.Success)
+                {
+                    _runJobsButton.Enabled = true;
+                }
             }
             catch (Exception oException)
             {
                 Error.Continue(oException, "Run Jobs failed");
+
+                // Recommended so the user can retry after an error.
+                _runJobsButton.Enabled = true;
+            }
+            finally
+            {
+                _runJobsProgressBar.Visible = false;
+                _runJobsButton.Enabled = true;
             }
         }
 
