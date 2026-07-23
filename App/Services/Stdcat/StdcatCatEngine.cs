@@ -32,6 +32,7 @@ namespace EcatDesktop.Services.Stdcat
                 Retail = "00000000";
                 ListPrice = "00000000";
                 PurchaseQuantity = "0001";
+                ManufacturerPurchaseQuantity = "0001";
                 Upc = string.Empty;
                 Gtin = "00000000000000";
                 StatusFlag = string.Empty;
@@ -55,6 +56,7 @@ namespace EcatDesktop.Services.Stdcat
             public string Retail { get; set; }
             public string ListPrice { get; set; }
             public string PurchaseQuantity { get; set; }
+            public string ManufacturerPurchaseQuantity { get; set; }
             public string Upc { get; set; }
             public string Gtin { get; set; }
             public string StatusFlag { get; set; }
@@ -213,9 +215,9 @@ namespace EcatDesktop.Services.Stdcat
                 // and then processed by tascii(..., 50, "Whl_Description", "").
                 // tascii left-trims and caps to MaxS; it does not pull characters beyond
                 // the 32-byte LT Description field.
-                                var sRawDescription = sSafeSubstring(sLine, 35, 32);
+                var sRawDescription = sSafeSubstring(sLine, 35, 32);
                 var sStatusFlag = sExtractHouseHassonStatusFlag(sRawDescription);
-                var sDescription = sNormalizeHouseHassonDescription(sParadoxTasci(sRawDescription, 50, string.Empty),sStatusFlag);
+                var sDescription = sNormalizeHouseHassonDescription(sParadoxTasci(sRawDescription, 50, string.Empty), sStatusFlag);
                 var sVendorCode = sSafeSubstring(sLine, 87, 5).Trim();
                 var sManufacturerPart = sSafeSubstring(sLine, 98, 16).Trim();
                 var sUnitOfMeasure = sSafeSubstring(sLine, 145, 2).Trim();
@@ -226,7 +228,14 @@ namespace EcatDesktop.Services.Stdcat
                     sManufacturerCost = sCost;
                 }
                 var sRetail = StdcatFormatter.sIntFill(8, sDigitsOnly(sSafeSubstring(sLine, 155, 8)), "00000000");
-                var sPurchaseQuantity = StdcatFormatter.sIntFill(4, sDigitsOnly(sSafeSubstring(sLine, 164, 6)), "0001");
+                var sMultiple = StdcatFormatter.sIntFill(4, sHouseHassonLoadTapeField(sLine, "Multiple"), "0001");
+                var sStandardPack = StdcatFormatter.sIntFill(4, sHouseHassonLoadTapeField(sLine, "Std_Pack"), "0001");
+                var iMultiple = iParsePositiveInt(sMultiple);
+                var iStandardPack = iParsePositiveInt(sStandardPack);
+                var sManufacturerPurchaseQuantity =
+                    sVendorCode.Length > 0 && iStandardPack < iMultiple
+                        ? sMultiple
+                        : sStandardPack;
                 var sTailSegment = sSafeSubstring(sLine, 282, sLine.Length - 282);
 
                 string sListPrice;
@@ -251,7 +260,8 @@ namespace EcatDesktop.Services.Stdcat
                 oItem.ManufacturerCost = sManufacturerCost;
                 oItem.Retail = sRetail;
                 oItem.ListPrice = sListPrice;
-                oItem.PurchaseQuantity = sPurchaseQuantity;
+                oItem.PurchaseQuantity = sMultiple;
+                oItem.ManufacturerPurchaseQuantity = sManufacturerPurchaseQuantity;
                 oItem.Upc = sUpc;
                 oItem.Gtin = sGtin;
                 oItem.StatusFlag = sStatusFlag;
@@ -277,7 +287,7 @@ namespace EcatDesktop.Services.Stdcat
                 .ToList();
         }
 
-      
+
 
         // Direct EJD item transform modeled on the Paradox itemIntoOut flow.
         private static IList<HouseHassonItemRecord> oItemIntoOutEjd(
@@ -332,6 +342,7 @@ namespace EcatDesktop.Services.Stdcat
                 oItem.LongDescriptionC = string.Empty;
                 oItem.LongDescriptionD = string.Empty;
                 oItem.PurchaseQuantity = sQuantity;
+                oItem.ManufacturerPurchaseQuantity = sQuantity;
 
                 string[] rLongDescriptions;
                 if (oLongDescriptions.TryGetValue(sSku, out rLongDescriptions))
@@ -1009,7 +1020,7 @@ namespace EcatDesktop.Services.Stdcat
             oValues["Whl_Mfg_Code"] = oItem.VendorCode;
             oValues["Whl_Mfg_Part_No"] = oItem.ManufacturerPartNumber;
             oValues["Whl_Mfg_Pur_UOM"] = oItem.UnitOfMeasure;
-            oValues["Whl_Mfg_Pur_UOM_Qty"] = oItem.PurchaseQuantity;
+            oValues["Whl_Mfg_Pur_UOM_Qty"] = oItem.ManufacturerPurchaseQuantity;
             oValues["Whl_Mfg_Pur_Min_Qty"] = "0001";
             oValues["Whl_Mfg_Cost"] = oItem.ManufacturerCost;
             oValues["Whl_Mfg_Cost_Date"] = "00000000";
@@ -1153,6 +1164,29 @@ namespace EcatDesktop.Services.Stdcat
                     ? sCode.Substring(sCode.Length - 12)
                     : sCode);
         }
+
+        private static string sHouseHassonLoadTapeField(string sLine, string sFieldName)
+        {
+            switch ((sFieldName ?? string.Empty).ToUpperInvariant())
+            {
+                case "MULTIPLE":
+                    // Paradox itemIntoOut reads Whl_Pur_UOM_Qty from tclt."Multiple".
+                    // The HHH fixed-width item feed parsed here does not supply that
+                    // field in the Std_Pack slot, so intfill applies the Paradox default.
+                    return string.Empty;
+                case "STD_PACK":
+                    return sDigitsOnly(sSafeSubstring(sLine, 164, 6));
+                default:
+                    return string.Empty;
+            }
+        }
+
+        private static int iParsePositiveInt(string sValue)
+        {
+            int iValue;
+            return int.TryParse(sDigitsOnly(sValue), out iValue) ? iValue : 0;
+        }
+
         private static string sParadoxTasci(string sValue, int iMaxSize, string sDefault)
         {
             sValue = sValue ?? string.Empty;
