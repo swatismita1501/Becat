@@ -206,7 +206,8 @@ namespace EcatDesktop.Services.Stdcat
                     continue;
                 }
 
-                var sDeptClass = sSafeSubstring(sLine, 20, 5).Trim();
+                var sClassCode = sSafeSubstring(sLine, 20, 3).Trim();
+                var sDepartmentCode = sHouseHassonLoadTapeField(sLine, "Whl_Dept");
                 var sFineline = sSafeSubstring(sLine, 30, 5).Trim();
                 // Paradox HHH uses the imported STDL_II Whl_Description field, not the full
                 // trailing raw text. In Paradox itemIntoOut this is documented as:
@@ -248,8 +249,8 @@ namespace EcatDesktop.Services.Stdcat
 
                 var oItem = new HouseHassonItemRecord();
                 oItem.Sku = sSku;
-                oItem.ClassCode = sDeptClass.Length >= 3 ? sDeptClass.Substring(0, 3) : string.Empty;
-                oItem.DepartmentCode = sDeptClass.Length >= 5 ? sDeptClass.Substring(3, 2) : string.Empty;
+                oItem.ClassCode = sClassCode;
+                oItem.DepartmentCode = sDepartmentCode;
                 oItem.FinelineCode = StdcatFormatter.sSpacePad(6, sFineline, "R");
                 oItem.Description = sDescription;
                 oItem.ShortDescription = sDescription.Length > 15 ? sDescription.Substring(0, 15) : sDescription;
@@ -1176,6 +1177,11 @@ namespace EcatDesktop.Services.Stdcat
                     return string.Empty;
                 case "STD_PACK":
                     return sDigitsOnly(sSafeSubstring(sLine, 164, 6));
+                case "WHL_DEPT":
+                    // Paradox itemIntoOut reads Whl_Dept as its own load-tape field.
+                    // For this HHH fixed-width item feed it is not supplied in the
+                    // class-code slice, so sNormalizeDepartmentCode later applies "99".
+                    return string.Empty;
                 default:
                     return string.Empty;
             }
