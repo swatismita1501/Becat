@@ -40,6 +40,7 @@ namespace EcatDesktop.Services.Stdcat
                 LongDescriptionB = string.Empty;
                 LongDescriptionC = string.Empty;
                 LongDescriptionD = string.Empty;
+                OriginalItemKey = string.Empty;
             }
 
             public string DepartmentCode { get; set; }
@@ -64,6 +65,7 @@ namespace EcatDesktop.Services.Stdcat
             public string LongDescriptionB { get; set; }
             public string LongDescriptionC { get; set; }
             public string LongDescriptionD { get; set; }
+            public string OriginalItemKey { get; set; }
         }
 
         private sealed class HouseHassonVendorRecord
@@ -107,6 +109,7 @@ namespace EcatDesktop.Services.Stdcat
         public StdcatCatEngine(string sApplicationBaseDirectory)
         {
             moItemFields = StdcatExportLayout.gItemFields;
+           
         }
         public void GenerateHouseHassonCatalog(
             string sItemInputPath,
@@ -206,8 +209,7 @@ namespace EcatDesktop.Services.Stdcat
                     continue;
                 }
 
-                var sClassCode = sSafeSubstring(sLine, 20, 3).Trim();
-                var sDepartmentCode = sHouseHassonLoadTapeField(sLine, "Whl_Dept");
+                var sDeptClass = sSafeSubstring(sLine, 20, 5).Trim();
                 var sFineline = sSafeSubstring(sLine, 30, 5).Trim();
                 // Paradox HHH uses the imported STDL_II Whl_Description field, not the full
                 // trailing raw text. In Paradox itemIntoOut this is documented as:
@@ -248,12 +250,15 @@ namespace EcatDesktop.Services.Stdcat
                 sListPrice = "00000000";
 
                 var oItem = new HouseHassonItemRecord();
+
                 oItem.Sku = sSku;
-                oItem.ClassCode = sClassCode;
-                oItem.DepartmentCode = sDepartmentCode;
+                oItem.ClassCode = sDeptClass.Length >= 3 ? sDeptClass.Substring(0, 3) : string.Empty;
+                oItem.DepartmentCode = sDeptClass.Length >= 5 ? sDeptClass.Substring(3, 2) : string.Empty;
                 oItem.FinelineCode = StdcatFormatter.sSpacePad(6, sFineline, "R");
+                oItem.OriginalItemKey = sSku;
+               
                 oItem.Description = sDescription;
-                oItem.ShortDescription = sDescription.Length > 15 ? sDescription.Substring(0, 15) : sDescription;
+                oItem.ShortDescription = sDescription.Length > 15 ? sDescription.Substring(0, 15) : string.Empty;
                 oItem.VendorCode = sVendorCode;
                 oItem.ManufacturerPartNumber = sManufacturerPart;
                 oItem.UnitOfMeasure = sUnitOfMeasure.Length == 0 ? "EA" : sUnitOfMeasure;
@@ -325,7 +330,7 @@ namespace EcatDesktop.Services.Stdcat
                 oItem.DepartmentCode = sDeptClass.Length >= 5 ? sDeptClass.Substring(3, 2) : string.Empty;
                 oItem.FinelineCode = string.Empty;
                 oItem.Description = sDescription;
-                oItem.ShortDescription = sDescription.Length > 15 ? sDescription.Substring(0, 15) : sDescription;
+                oItem.ShortDescription = sDescription.Length > 15 ? sDescription.Substring(0, 15) : string.Empty; 
                 oItem.VendorCode = sVendorCode;
                 oItem.ManufacturerPartNumber = sManufacturerPart.Length == 0 ? sSku : sManufacturerPart;
                 oItem.UnitOfMeasure = sUnitOfMeasure.Length == 0 ? "EA" : sUnitOfMeasure;
@@ -651,7 +656,7 @@ namespace EcatDesktop.Services.Stdcat
             oItem.DepartmentCode = sDeptClass.Length >= 5 ? sDeptClass.Substring(3, 2) : "00";
             oItem.FinelineCode = StdcatFormatter.sSpacePad(6, sFineline.Length == 0 ? oItem.ClassCode : sFineline, "R");
             oItem.Description = sDescription.Length == 0 ? sSku : sDescription;
-            oItem.ShortDescription = oItem.Description.Length > 15 ? oItem.Description.Substring(0, 15) : oItem.Description;
+            oItem.ShortDescription = oItem.Description.Length > 15 ? oItem.Description.Substring(0, 15) : string.Empty;
             oItem.VendorCode = sVendorCode;
             oItem.ManufacturerPartNumber = sManufacturerPart.Length == 0 ? sSku : sManufacturerPart;
             oItem.UnitOfMeasure = sUnitOfMeasure.Length == 0 ? "EA" : sUnitOfMeasure;
@@ -922,7 +927,6 @@ namespace EcatDesktop.Services.Stdcat
                             .OrderByDescending(oDeptGroup => oDeptGroup.Count())
                             .ThenBy(oDeptGroup => oDeptGroup.Key, StringComparer.OrdinalIgnoreCase)
                             .First();
-
                         var oRepresentativeItem = oClassGroup.First();
                         oRepresentativeItem.DepartmentCode = oPreferredDepartment.Key;
                         return oRepresentativeItem;
@@ -1019,7 +1023,7 @@ namespace EcatDesktop.Services.Stdcat
             oValues["Whl_Cost_Date"] = "00000000";
             oValues["Whl_Breakpack_Ind"] = string.Empty;
             oValues["Whl_Mfg_Code"] = oItem.VendorCode;
-            oValues["Whl_Mfg_Part_No"] = oItem.ManufacturerPartNumber;
+            oValues["Whl_Mfg_Part_No"] = oItem.ManufacturerPartNumber;         
             oValues["Whl_Mfg_Pur_UOM"] = oItem.UnitOfMeasure;
             oValues["Whl_Mfg_Pur_UOM_Qty"] = oItem.ManufacturerPurchaseQuantity;
             oValues["Whl_Mfg_Pur_Min_Qty"] = "0001";
@@ -1078,7 +1082,38 @@ namespace EcatDesktop.Services.Stdcat
             oValues["E4_Id"] = string.Empty;
             oValues["GTIN"] = oItem.Gtin;
             oValues["Filler"] = string.Empty;
-            return StdcatExportLayout.sBuildRow(moItemFields, oValues);
+            // return StdcatExportLayout.sBuildRow(moItemFields, oValues);
+            var sRow = StdcatExportLayout.sBuildRow(moItemFields, oValues);
+
+            if (string.Equals(sWhlCode, "HHH", StringComparison.OrdinalIgnoreCase))
+            {
+                sRow = sForceRepeatedHouseHassonItemKey(sRow);
+            }
+
+            return sRow;
+        }
+
+        private static string sForceRepeatedHouseHassonItemKey(string sRow)
+        {
+            const int iPrimaryKeyStart = 147;
+            const int iRepeatedKeyStart = 195;
+            const int iKeyLength = 26;
+
+            if (string.IsNullOrEmpty(sRow) || sRow.Length < iRepeatedKeyStart + iKeyLength)
+            {
+                return sRow;
+            }
+
+            var sPrimaryKey = sRow.Substring(iPrimaryKeyStart, iKeyLength);
+
+            if (!Regex.IsMatch(sPrimaryKey, @"^[A-Z]{2}[A-Z0-9]{24}$"))
+            {
+                return sRow;
+            }
+
+            return sRow.Substring(0, iRepeatedKeyStart)
+                + sPrimaryKey
+                + sRow.Substring(iRepeatedKeyStart + iKeyLength);
         }
 
         private static string sNormalizeDepartmentCode(string sDepartmentCode)
@@ -1177,11 +1212,6 @@ namespace EcatDesktop.Services.Stdcat
                     return string.Empty;
                 case "STD_PACK":
                     return sDigitsOnly(sSafeSubstring(sLine, 164, 6));
-                case "WHL_DEPT":
-                    // Paradox itemIntoOut reads Whl_Dept as its own load-tape field.
-                    // For this HHH fixed-width item feed it is not supplied in the
-                    // class-code slice, so sNormalizeDepartmentCode later applies "99".
-                    return string.Empty;
                 default:
                     return string.Empty;
             }
